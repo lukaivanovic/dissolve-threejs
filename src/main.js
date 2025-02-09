@@ -14,20 +14,36 @@ document.body.appendChild(renderer.domElement);
 
 function createGridPoints(width, height, segments) {
   const positions = new Float32Array(segments * segments * 3); // xyz for each point
+  const velocities = new Float32Array(segments * segments * 3);
+  const initialPositions = new Float32Array(segments * segments * 3);
 
   for (let i = 0; i < segments; i++) {
     for (let j = 0; j < segments; j++) {
       const index = (i * segments + j) * 3;
 
-      // Convert grid position (i,j) to actual position in space
-      positions[index] = (i / (segments - 1) - 0.5) * width; // x
-      positions[index + 1] = (j / (segments - 1) - 0.5) * height; // y
-      positions[index + 2] = 0; // z
+      // Initial position
+      positions[index] = (i / (segments - 1) - 0.5) * width;
+      positions[index + 1] = (j / (segments - 1) - 0.5) * height;
+      positions[index + 2] = 0;
+
+      // Store initial positions for reference
+      initialPositions[index] = positions[index];
+      initialPositions[index + 1] = positions[index + 1];
+      initialPositions[index + 2] = positions[index + 2];
+
+      velocities[index] = (Math.random() - 0.5) * 0.01; // x velocity
+      velocities[index + 1] = Math.random() * 0.02; // y velocity - upward drift
+      velocities[index + 2] = 0; // z velocity
     }
   }
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute("velocity", new THREE.BufferAttribute(velocities, 3));
+  geometry.setAttribute(
+    "initialPosition",
+    new THREE.BufferAttribute(initialPositions, 3)
+  );
   return geometry;
 }
 
@@ -43,7 +59,28 @@ scene.add(points);
 
 camera.position.z = 5;
 
+const params = {
+  maxDistance: 0.5, // Maximum distance particles can travel from initial position
+  returnSpeed: 0.02, // Speed at which particles return to their initial position
+  time: 0,
+};
+
 function animate() {
+  // params.time += 0.01;
+
+  const positions = points.geometry.attributes.position.array;
+  const velocities = points.geometry.attributes.velocity.array;
+  const initialPositions = points.geometry.attributes.initialPosition.array;
+
+  for (let i = 0; i < positions.length; i += 3) {
+    // Update positions with velocities
+    positions[i] += velocities[i];
+    positions[i + 1] += velocities[i + 1];
+    positions[i + 2] += velocities[i + 2];
+  }
+
+  points.geometry.attributes.position.needsUpdate = true;
+
   renderer.render(scene, camera);
 }
 
