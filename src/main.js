@@ -16,7 +16,9 @@ function createGridPoints(width, height, segments) {
   const positions = new Float32Array(segments * segments * 3); // xyz for each point
   const velocities = new Float32Array(segments * segments * 3);
   const initialPositions = new Float32Array(segments * segments * 3);
+  const indexes = new Float32Array(segments * segments);
 
+  let indexCounter = 0;
   for (let i = 0; i < segments; i++) {
     for (let j = 0; j < segments; j++) {
       const index = (i * segments + j) * 3;
@@ -31,9 +33,12 @@ function createGridPoints(width, height, segments) {
       initialPositions[index + 1] = positions[index + 1];
       initialPositions[index + 2] = positions[index + 2];
 
-      velocities[index] = (Math.random() - 0.5) * 0.01; // x velocity
-      velocities[index + 1] = Math.random() * 0.02; // y velocity - upward drift
+      velocities[index] = (Math.random() * 0.2 + 0.8) * 0.02;
+      velocities[index + 1] = (Math.random() - 0.7) * 0.005;
       velocities[index + 2] = 0; // z velocity
+
+      indexes[indexCounter] = indexCounter;
+      indexCounter++;
     }
   }
 
@@ -44,6 +49,7 @@ function createGridPoints(width, height, segments) {
     "initialPosition",
     new THREE.BufferAttribute(initialPositions, 3)
   );
+  geometry.setAttribute("index", new THREE.BufferAttribute(indexes, 1));
   return geometry;
 }
 
@@ -60,28 +66,29 @@ scene.add(points);
 camera.position.z = 5;
 
 const params = {
-  maxDistance: 0.5, // Maximum distance particles can travel from initial position
-  returnSpeed: 0.02, // Speed at which particles return to their initial position
-  time: 0,
+  time: 0.0,
 };
 
 function animate() {
-  // params.time += 0.01;
-
+  params.time += 0.01;
+  const indexes = points.geometry.attributes.index.array;
   const positions = points.geometry.attributes.position.array;
   const velocities = points.geometry.attributes.velocity.array;
-  const initialPositions = points.geometry.attributes.initialPosition.array;
 
   for (let i = 0; i < positions.length; i += 3) {
     // Update positions with velocities
-    positions[i] += velocities[i];
-    positions[i + 1] += velocities[i + 1];
-    positions[i + 2] += velocities[i + 2];
+    if (indexes[i / 3] < params.time * 100) {
+      positions[i] += velocities[i];
+      positions[i + 1] += velocities[i + 1];
+      positions[i + 2] += velocities[i + 2];
+    }
   }
 
   points.geometry.attributes.position.needsUpdate = true;
 
   renderer.render(scene, camera);
 }
+
+console.log(points.geometry.attributes.index.array);
 
 renderer.setAnimationLoop(animate);
