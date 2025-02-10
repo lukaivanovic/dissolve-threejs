@@ -129,14 +129,21 @@ camera.position.z = 5;
 
 const params = {
   time: 0,
-  animationTime: 2000,
+  animationTime: 300,
 };
 
 function animate() {
   params.time += 1;
-  const baseSpeed = 0.00001;
-  const acceleration = 0.000001;
-  const maxSpeed = 0.001;
+  // Scale these values based on animation time
+  const baseSpeed = 0.00001 * (1000 / params.animationTime);
+  const acceleration = 0.000004 * (1000 / params.animationTime);
+  const maxSpeed = 0.005 * (1000 / params.animationTime);
+
+  // Wave motion scaling
+  const waveSpeed = 0.001 * (1000 / params.animationTime);
+  const waveAmplitude = 0.001 * (1000 / params.animationTime);
+  const velocityScale = 0.01 * (1000 / params.animationTime);
+  const verticalVelocityScale = 0.04 * (1000 / params.animationTime);
 
   const positions = points.geometry.attributes.position.array;
   const velocities = points.geometry.attributes.velocities.array;
@@ -145,7 +152,8 @@ function animate() {
   const opacities = points.geometry.attributes.pointOpacity.array;
 
   const effectProgress = params.time / params.animationTime;
-  const particleDelay = 0.02;
+  // Scale particle delay based on animation time
+  const particleDelay = 0.02 * (1000 / params.animationTime);
 
   for (let i = 0; i < opacities.length; i++) {
     const positionIndex = i * 3;
@@ -155,7 +163,11 @@ function animate() {
     const columnProgress = columnIndices[i] / 20;
 
     if (columnProgress < effectProgress - particleDelay) {
-      opacities[i] = Math.min(opacities[i] + 0.01, 1.0); // Cap opacity
+      // Scale opacity increment based on animation time
+      opacities[i] = Math.min(
+        opacities[i] + 0.01 * (1000 / params.animationTime),
+        1.0
+      );
     }
 
     if (opacities[i] > 0.2) {
@@ -163,8 +175,13 @@ function animate() {
         Math.sqrt(2 * acceleration * distanceTravelled),
         maxSpeed
       );
-      positions[positionIndex] += speed + velocities[positionIndex] * 0.01;
-      positions[positionIndex + 1] += velocities[positionIndex + 1] * 0.04;
+
+      positions[positionIndex] +=
+        speed + velocities[positionIndex] * velocityScale;
+      positions[positionIndex + 1] +=
+        velocities[positionIndex + 1] * verticalVelocityScale +
+        Math.sin(positions[positionIndex] * 2 + params.time * waveSpeed) *
+          waveAmplitude;
     }
   }
 
