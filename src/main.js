@@ -14,16 +14,19 @@ document.body.appendChild(renderer.domElement);
 
 const pointMaterial = new THREE.ShaderMaterial({
   uniforms: {
-    globalOpacity: { value: 1.0 }, // Optional global opacity multiplier
+    globalOpacity: { value: 1.0 },
+    particleSize: { value: 3.0 }, // Adjustable size
   },
   vertexShader: `
       attribute float pointOpacity;
+      uniform float particleSize;
       varying float vOpacity;
       
       void main() {
           vOpacity = pointOpacity;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-          gl_PointSize = 2.0;
+          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+          gl_Position = projectionMatrix * mvPosition;
+          gl_PointSize = particleSize * (1.0 / -mvPosition.z);
       }
   `,
   fragmentShader: `
@@ -33,10 +36,11 @@ const pointMaterial = new THREE.ShaderMaterial({
       void main() {
           vec2 center = gl_PointCoord - vec2(0.5);
           float dist = length(center);
-          float strength = 1.0 - smoothstep(0.45, 0.5, dist);
           
-          // Combine point-specific opacity with global opacity
-          gl_FragColor = vec4(1.0, 1.0, 1.0, strength * vOpacity * globalOpacity);
+          float strength = 1.0 - smoothstep(0.3, 0.5, dist);
+          
+          float finalAlpha = strength * vOpacity * globalOpacity;
+          gl_FragColor = vec4(1.0, 1.0, 1.0, finalAlpha);
       }
   `,
   transparent: true,
@@ -73,6 +77,7 @@ function createGridPoints(width, height, segments) {
   const totalPoints = segments * segments;
   const positions = new Float32Array(segments * segments * 3);
   const velocities = new Float32Array(segments * segments * 3);
+  const initialPositions = new Float32Array(segments * segments * 3);
   const columnIndices = new Float32Array(segments * segments);
   const opacities = new Float32Array(segments * segments);
 
@@ -83,19 +88,24 @@ function createGridPoints(width, height, segments) {
 
     positions[index] = (col / (segments - 1) - 0.5) * width;
     positions[index + 1] = (row / (segments - 1) - 0.5) * height;
-    positions[index + 2] = 0;
 
-    velocities[index] = (Math.random() * 0.2 + 0.8) * 0.01;
-    velocities[index + 1] = (Math.random() - 0.7) * 0.005;
-    velocities[index + 2] = 0;
+    initialPositions[index] = (col / (segments - 1) - 0.5) * width;
+    initialPositions[index + 1] = (row / (segments - 1) - 0.5) * height;
+
+    velocities[index] = Math.random() * 0.02; // x velocity
+    velocities[index + 1] = (Math.random() - 0.5) * 0.01; // y velocity - upward drift
+
     columnIndices[i] = col;
-
     opacities[i] = 0;
   }
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute("velocity", new THREE.BufferAttribute(velocities, 3));
+  geometry.setAttribute("velocities", new THREE.BufferAttribute(velocities, 3));
+  geometry.setAttribute(
+    "initialPositions",
+    new THREE.BufferAttribute(initialPositions, 3)
+  );
   geometry.setAttribute(
     "columnIndex",
     new THREE.BufferAttribute(columnIndices, 1)
@@ -111,54 +121,51 @@ const pointsGeometry = createGridPoints(1, 1, 20);
 const points = new THREE.Points(pointsGeometry, pointMaterial);
 scene.add(points);
 
-const squareGeometry = new THREE.PlaneGeometry(1, 0.5);
+const squareGeometry = new THREE.PlaneGeometry(1, 1.1);
 const square = new THREE.Mesh(squareGeometry, dissolveMaterial);
 scene.add(square);
 
 camera.position.z = 5;
 
 const params = {
-  time: 0.0,
-  animationTime: 10.0,
+  time: 0,
+  animationTime: 2000,
 };
 
 function animate() {
-  const effectProgress = params.time / params.animationTime;
-  params.time += 0.01;
+  params.time += 1;
+  const baseSpeed = 0.00001;
+  const acceleration = 0.000001;
+  const maxSpeed = 0.001;
+
   const positions = points.geometry.attributes.position.array;
-  const velocities = points.geometry.attributes.velocity.array;
+  const velocities = points.geometry.attributes.velocities.array;
+  const initialPositions = points.geometry.attributes.initialPositions.array;
   const columnIndices = points.geometry.attributes.columnIndex.array;
   const opacities = points.geometry.attributes.pointOpacity.array;
 
-  const activeColumn = Math.floor(params.time * 1);
+  const effectProgress = params.time / params.animationTime;
+  const particleDelay = 0.02;
 
   for (let i = 0; i < opacities.length; i++) {
     const positionIndex = i * 3;
+    const distanceTravelled = Math.abs(
+      positions[positionIndex] - initialPositions[positionIndex]
+    );
+    const columnProgress = columnIndices[i] / 20;
 
-    const normalizedColumnPosition = columnIndices[i] / 20;
-    const distanceFromLine = normalizedColumnPosition - effectProgress;
-    const transitionZone = 0.05;
-
-    if (distanceFromLine < transitionZone) {
-      const activation = 1.0 - distanceFromLine / transitionZone;
-      opacities[i] = Math.min(opacities[i] + 0.01 * activation, 1.0);
-
-      // Use all velocity components
-      positions[positionIndex] += velocities[positionIndex] * activation;
-      positions[positionIndex + 1] +=
-        velocities[positionIndex + 1] * activation;
-      positions[positionIndex + 2] +=
-        velocities[positionIndex + 2] * activation;
+    if (columnProgress < effectProgress - particleDelay) {
+      opacities[i] = Math.min(opacities[i] + 0.01, 1.0); // Cap opacity
     }
 
-    /*
-
-    if (columnIndices[i] / 20 < effectProgress - 0.1) {
-      opacities[i] += 0.01;
-      positions[positionIndex] += 1 / effectProgress;
-      
+    if (opacities[i] > 0.2) {
+      const speed = Math.min(
+        Math.sqrt(2 * acceleration * distanceTravelled),
+        maxSpeed
+      );
+      positions[positionIndex] += speed + velocities[positionIndex] * 0.01;
+      positions[positionIndex + 1] += velocities[positionIndex + 1] * 0.04;
     }
-      */
   }
 
   dissolveMaterial.uniforms.threshold.value = effectProgress;
@@ -169,24 +176,3 @@ function animate() {
 }
 
 renderer.setAnimationLoop(animate);
-
-// const normalizedX = (positions[positionIndex] + 0.5); // assuming width is 1
-// Create a transition zone around the dissolve line
-
-/*
-    const transitionWidth = 0.3;
-    const distanceFromLine = positions[positionIndex] - effectProgress;
-
-    if (distanceFromLine < transitionWidth) {
-      // Smoothly activate points near the line
-      const activation = 3.0 - distanceFromLine / transitionWidth;
-      opacities[i] = Math.min(opacities[i] + 0.1 * activation, 1.0);
-
-      // Scale velocity based on proximity to the line
-      const velocityScale = activation;
-      positions[positionIndex] += velocities[positionIndex];
-      positions[positionIndex + 1] += velocities[positionIndex + 1];
-    }
-    */
-
-// positions[positionIndex + 1] += velocities[positionIndex + 1];
