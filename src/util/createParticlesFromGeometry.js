@@ -10,6 +10,21 @@ export default function (geometry) {
   const initialY = new Float32Array(totalPoints);
   const pointPositions = new Float32Array(totalPoints * 3);
 
+  // Calculate bounds first
+  let minX = Infinity;
+  let maxX = -Infinity;
+  for (let i = 0; i < positions.length; i += 3) {
+    minX = Math.min(minX, positions[i]);
+    maxX = Math.max(maxX, positions[i]);
+  }
+  const xRange = Math.abs(maxX - minX);
+
+  // Store these as attributes
+  const bounds = new Float32Array(3); // [minX, maxX, xRange]
+  bounds[0] = minX;
+  bounds[1] = maxX;
+  bounds[2] = xRange;
+
   for (let i = 0; i < totalPoints; i++) {
     const index = i * 3;
 
@@ -20,16 +35,16 @@ export default function (geometry) {
 
     // Add some randomization for more natural look
     const jitter = 0.02; // Adjust this value to control spread
-    pointPositions[index] = x; // + (Math.random() - 0.5) * jitter;
-    pointPositions[index + 1] = y; // + (Math.random() - 0.5) * jitter;
-    pointPositions[index + 2] = z; // + (Math.random() - 0.5) * jitter;
+    pointPositions[index] = x + (Math.random() - 0.5) * jitter;
+    pointPositions[index + 1] = y + (Math.random() - 0.5) * jitter;
+    pointPositions[index + 2] = 1;
 
     initialPositions[index] = pointPositions[index];
     initialPositions[index + 1] = pointPositions[index + 1];
-    initialPositions[index + 2] = pointPositions[index + 2];
+    initialPositions[index + 2] = 1;
 
     velocities[index] = Math.random() * 0.01; // x velocity
-    velocities[index + 1] = (Math.random() - 0.5) * 0.02; // y velocity - upward drift
+    velocities[index + 1] = (Math.random() - 0.5) * 0.01; // y velocity - upward drift
     velocities[index + 2] = (Math.random() - 0.5) * 0.01; // z velocity for depth
 
     initialY[i] = positions[i + 1];
@@ -39,8 +54,8 @@ export default function (geometry) {
     velocities[i + 2] = (Math.random() - 0.5) * 0.01; // z velocity for depth
 
     opacities[i] = 0;
-    const shouldBeVisible = 1; // Math.random() > 0.2; // 70% of points will be visible
-    opacities[i] = shouldBeVisible ? 0 : 0; // Use -1 to mark permanently hidden points
+    const shouldBeVisible = Math.random() > 0.4; // 70% of points will be visible
+    opacities[i] = shouldBeVisible ? 0 : -1; // Use -1 to mark permanently hidden points
   }
 
   const pointGeometry = new THREE.BufferGeometry();
@@ -68,6 +83,7 @@ export default function (geometry) {
     "initialY",
     new THREE.BufferAttribute(initialY, 1)
   );
+  pointGeometry.setAttribute("bounds", new THREE.BufferAttribute(bounds, 1));
 
   return pointGeometry;
 }

@@ -9,14 +9,15 @@ export default function (time, animationTime, points) {
   const waveAmplitude = 0.001 * (1000 / animationTime);
   const velocityScale = 0.01 * (1000 / animationTime);
   const verticalVelocityScale = 0.04 * (1000 / animationTime);
-
   const positions = points.geometry.attributes.position.array;
   const velocities = points.geometry.attributes.velocities.array;
   const initialPositions = points.geometry.attributes.initialPositions.array;
   const opacities = points.geometry.attributes.pointOpacity.array;
+  const bounds = points.geometry.attributes.bounds.array;
+  const minX = bounds[0];
+  const xRange = bounds[2];
 
   const effectProgress = time / animationTime;
-  // Scale particle delay based on animation time
   const particleDelay = 0.01 * (1000 / animationTime);
 
   for (let i = 0; i < opacities.length; i++) {
@@ -26,12 +27,7 @@ export default function (time, animationTime, points) {
       positions[positionIndex] - initialPositions[positionIndex]
     );
 
-    const xRange = Math.abs(
-      Math.max(...initialPositions) - Math.min(...initialPositions)
-    );
-    const xProgress =
-      (initialPositions[positionIndex] - Math.min(...initialPositions)) /
-      xRange;
+    const xProgress = (initialPositions[positionIndex] - minX) / xRange;
 
     if (xProgress < effectProgress - particleDelay) {
       opacities[i] = Math.min(opacities[i] + 0.015, 1.0);
