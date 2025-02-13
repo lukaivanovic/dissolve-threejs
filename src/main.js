@@ -102,6 +102,9 @@ function createGridPoints(width, height, segments) {
 
     columnIndices[i] = col;
     opacities[i] = 0;
+
+    const shouldBeVisible = Math.random() > 0.3; // 70% of points will be visible
+    opacities[i] = shouldBeVisible ? 0 : -1; // Use -1 to mark permanently hidden points
   }
 
   const geometry = new THREE.BufferGeometry();
@@ -164,7 +167,7 @@ function animate() {
   if (!params.isPlaying) return;
   params.time += 1;
   // Scale these values based on animation time
-  const baseSpeed = 0.00001 * (1000 / params.animationTime);
+  const baseSpeed = 0.000005 * (1000 / params.animationTime);
   const acceleration = 0.000004 * (1000 / params.animationTime);
   const maxSpeed = 0.005 * (1000 / params.animationTime);
 
@@ -185,6 +188,7 @@ function animate() {
   const particleDelay = 0.01 * (1000 / params.animationTime);
 
   for (let i = 0; i < opacities.length; i++) {
+    if (opacities[i] === -1) continue;
     const positionIndex = i * 3;
     const distanceTravelled = Math.abs(
       positions[positionIndex] - initialPositions[positionIndex]
@@ -202,7 +206,7 @@ function animate() {
       );
 
       positions[positionIndex] +=
-        speed + velocities[positionIndex] * velocityScale;
+        baseSpeed + speed + velocities[positionIndex] * velocityScale;
 
       // Add wave motion only after traveling a certain distance
       const waveStartDistance = 0.1; // Adjust this value to control when the wave starts
@@ -210,6 +214,7 @@ function animate() {
         Math.max(0, (distanceTravelled - waveStartDistance) / 0.1),
         1.0
       );
+
       positions[positionIndex + 1] +=
         velocities[positionIndex + 1] * verticalVelocityScale +
         Math.sin(positions[positionIndex] * 2 + params.time * waveSpeed) *
