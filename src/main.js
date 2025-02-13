@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { Pane } from "https://cdn.jsdelivr.net/npm/tweakpane@4.0.5/dist/tweakpane.min.js";
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
@@ -15,7 +16,7 @@ document.body.appendChild(renderer.domElement);
 const pointMaterial = new THREE.ShaderMaterial({
   uniforms: {
     globalOpacity: { value: 1.0 },
-    particleSize: { value: 3.0 }, // Adjustable size
+    particleSize: { value: 2.0 }, // Reduced size for more delicate particles
   },
   vertexShader: `
       attribute float pointOpacity;
@@ -26,7 +27,8 @@ const pointMaterial = new THREE.ShaderMaterial({
           vOpacity = pointOpacity;
           vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
           gl_Position = projectionMatrix * mvPosition;
-          gl_PointSize = particleSize * (1.0 / -mvPosition.z);
+          // Add distance-based size variation
+          gl_PointSize = particleSize * (1.0 / -mvPosition.z) * (0.8 + 0.4 * vOpacity);
       }
   `,
   fragmentShader: `
@@ -37,10 +39,12 @@ const pointMaterial = new THREE.ShaderMaterial({
           vec2 center = gl_PointCoord - vec2(0.5);
           float dist = length(center);
           
-          float strength = 1.0 - smoothstep(0.3, 0.5, dist);
+          // Softer particle appearance
+          float strength = 1.0 - smoothstep(0.2, 0.5, dist);
           
           float finalAlpha = strength * vOpacity * globalOpacity;
-          gl_FragColor = vec4(1.0, 1.0, 1.0, finalAlpha);
+          // Add slight color variation
+          gl_FragColor = vec4(1.0, 0.98, 0.95, finalAlpha);
       }
   `,
   transparent: true,
@@ -93,7 +97,8 @@ function createGridPoints(width, height, segments) {
     initialPositions[index + 1] = (row / (segments - 1) - 0.5) * height;
 
     velocities[index] = Math.random() * 0.02; // x velocity
-    velocities[index + 1] = (Math.random() - 0.5) * 0.01; // y velocity - upward drift
+    velocities[index + 1] = (Math.random() - 0.5) * 0.02; // y velocity - upward drift
+    velocities[index + 2] = (Math.random() - 0.5) * 0.01; // z velocity for depth
 
     columnIndices[i] = col;
     opacities[i] = 0;
@@ -127,12 +132,36 @@ scene.add(square);
 
 camera.position.z = 5;
 
+const pane = new Pane();
+
 const params = {
   time: 0,
-  animationTime: 300,
+  animationTime: 400,
+  isPlaying: true,
+  reset: () => {
+    params.time = 0;
+
+    const pointsGeometry = createGridPoints(1, 1, 20);
+    const points = new THREE.Points(pointsGeometry, pointMaterial);
+    scene.add(points);
+
+    const squareGeometry = new THREE.PlaneGeometry(1, 1.1);
+    const square = new THREE.Mesh(squareGeometry, dissolveMaterial);
+    scene.add(square);
+  },
 };
 
+const btn = pane.addButton({
+  title: "Reset",
+  label: "Reset", // optional
+});
+
+btn.on("click", () => {
+  window.location.reload();
+});
+
 function animate() {
+  if (!params.isPlaying) return;
   params.time += 1;
   // Scale these values based on animation time
   const baseSpeed = 0.00001 * (1000 / params.animationTime);
@@ -153,7 +182,7 @@ function animate() {
 
   const effectProgress = params.time / params.animationTime;
   // Scale particle delay based on animation time
-  const particleDelay = 0.02 * (1000 / params.animationTime);
+  const particleDelay = 0.01 * (1000 / params.animationTime);
 
   for (let i = 0; i < opacities.length; i++) {
     const positionIndex = i * 3;
@@ -163,11 +192,7 @@ function animate() {
     const columnProgress = columnIndices[i] / 20;
 
     if (columnProgress < effectProgress - particleDelay) {
-      // Scale opacity increment based on animation time
-      opacities[i] = Math.min(
-        opacities[i] + 0.01 * (1000 / params.animationTime),
-        1.0
-      );
+      opacities[i] = Math.min(opacities[i] + 0.015, 1.0);
     }
 
     if (opacities[i] > 0.2) {
@@ -178,10 +203,18 @@ function animate() {
 
       positions[positionIndex] +=
         speed + velocities[positionIndex] * velocityScale;
+
+      // Add wave motion only after traveling a certain distance
+      const waveStartDistance = 0.1; // Adjust this value to control when the wave starts
+      const waveStrength = Math.min(
+        Math.max(0, (distanceTravelled - waveStartDistance) / 0.1),
+        1.0
+      );
       positions[positionIndex + 1] +=
         velocities[positionIndex + 1] * verticalVelocityScale +
         Math.sin(positions[positionIndex] * 2 + params.time * waveSpeed) *
-          waveAmplitude;
+          waveAmplitude *
+          waveStrength;
     }
   }
 
