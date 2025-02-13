@@ -1,8 +1,7 @@
 import * as THREE from "three";
 import { Pane } from "https://cdn.jsdelivr.net/npm/tweakpane@4.0.5/dist/tweakpane.min.js";
 import createParticlesFromGeometry from "./util/createParticlesFromGeometry";
-import ParticleMaterial from "./materials/ParticleMaterial";
-import DissolveMaterial from "./materials/DissolveMaterial";
+import particleAnimation from "./util/animation";
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
@@ -18,28 +17,38 @@ document.body.appendChild(renderer.domElement);
 
 camera.position.z = 5;
 
-// Create any geometry
-const modelGeometry = new THREE.TorusGeometry(1, 0.3, 16, 32);
-// Generate points
+const modelGeometry = new THREE.PlaneGeometry(1, 1, 20, 20); // 20x20 segments
 const pointsGeometry = createParticlesFromGeometry(modelGeometry);
-// Create points mesh
+
 const points = new THREE.Points(
-  pointsGeometry,
+  modelGeometry,
   new THREE.PointsMaterial({
     color: 0xffffff,
-    size: 0.05, // Adjust this value to make points visible
+    size: 0.01, // Adjust this value to make points visible
+    transparent: true,
+    opacity: 0.1, // Added opacity control
   })
 );
 
-scene.add(points);
+const points2 = new THREE.Points(
+  pointsGeometry,
+  new THREE.PointsMaterial({
+    color: 0xff0000,
+    size: 0.01, // Adjust this value to make points visible
+  })
+);
+
+// scene.add(points);
+scene.add(points2);
+
+const params = {
+  time: 0,
+  animationTime: 50,
+};
 
 function animate() {
-  // Rotate around Y axis
-  points.rotation.y += 0.01;
-
-  // You can also add rotation on other axes
-  points.rotation.x += 0.005;
-
+  params.time += 1;
+  particleAnimation(params.time, params.animationTime, points2);
   renderer.render(scene, camera);
 }
 
