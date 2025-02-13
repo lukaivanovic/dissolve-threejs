@@ -16,19 +16,28 @@ document.body.appendChild(renderer.domElement);
 const pointMaterial = new THREE.ShaderMaterial({
   uniforms: {
     globalOpacity: { value: 1.0 },
-    particleSize: { value: 2.0 }, // Reduced size for more delicate particles
+    particleSize: { value: 4.0 },
+    time: { value: 0 }, // Add time uniform for particle animation
   },
   vertexShader: `
       attribute float pointOpacity;
+      attribute float initialY;  // Add initial Y position
       uniform float particleSize;
+      uniform float time;
       varying float vOpacity;
       
       void main() {
           vOpacity = pointOpacity;
-          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+          vec3 pos = position;
+          
+          // Add subtle swirl based on height and time
+          float swirl = sin(time * 0.001 + initialY * 2.0) * 0.02;
+          pos.x += swirl;
+          
+          vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
           gl_Position = projectionMatrix * mvPosition;
-          // Add distance-based size variation
-          gl_PointSize = particleSize * (1.0 / -mvPosition.z) * (0.8 + 0.4 * vOpacity);
+          // Vary size based on opacity and movement
+          gl_PointSize = particleSize * (1.0 / -mvPosition.z) * (0.6 + 0.6 * vOpacity);
       }
   `,
   fragmentShader: `
@@ -39,12 +48,17 @@ const pointMaterial = new THREE.ShaderMaterial({
           vec2 center = gl_PointCoord - vec2(0.5);
           float dist = length(center);
           
-          // Softer particle appearance
-          float strength = 1.0 - smoothstep(0.2, 0.5, dist);
+          // Create softer, more ethereal particles
+          float strength = 1.0 - smoothstep(0.1, 0.5, dist);
           
           float finalAlpha = strength * vOpacity * globalOpacity;
-          // Add slight color variation
-          gl_FragColor = vec4(1.0, 0.98, 0.95, finalAlpha);
+          // Add more dramatic color variation
+          vec3 color = mix(
+              vec3(1.0, 0.95, 0.8),  // Warm color
+              vec3(0.9, 0.95, 1.0),   // Cool color
+              vOpacity * 0.3
+          );
+          gl_FragColor = vec4(color, finalAlpha);
       }
   `,
   transparent: true,
@@ -84,26 +98,35 @@ function createGridPoints(width, height, segments) {
   const initialPositions = new Float32Array(segments * segments * 3);
   const columnIndices = new Float32Array(segments * segments);
   const opacities = new Float32Array(segments * segments);
+  const initialY = new Float32Array(segments * segments);
 
   for (let i = 0; i < totalPoints; i++) {
     const col = i % segments;
     const row = Math.floor(i / segments);
     const index = i * 3;
 
-    positions[index] = (col / (segments - 1) - 0.5) * width;
-    positions[index + 1] = (row / (segments - 1) - 0.5) * height;
+    // Create more varied initial positions
+    const offsetX = (Math.random() - 0.5) * 0.1;
+    const offsetY = (Math.random() - 0.5) * 0.1;
 
-    initialPositions[index] = (col / (segments - 1) - 0.5) * width;
-    initialPositions[index + 1] = (row / (segments - 1) - 0.5) * height;
+    positions[index] = (col / (segments - 1) - 0.5) * width + offsetX;
+    positions[index + 1] = (row / (segments - 1) - 0.5) * height + offsetY;
+    positions[index + 2] = (Math.random() - 0.5) * 0.1; // Add initial depth variation
 
-    velocities[index] = Math.random() * 0.02; // x velocity
+    initialPositions[index] = positions[index];
+    initialPositions[index + 1] = positions[index + 1];
+    initialPositions[index + 2] = positions[index + 2];
+
+    initialY[i] = positions[index + 1];
+
+    velocities[index] = Math.random() * 0.01; // x velocity
     velocities[index + 1] = (Math.random() - 0.5) * 0.02; // y velocity - upward drift
     velocities[index + 2] = (Math.random() - 0.5) * 0.01; // z velocity for depth
 
     columnIndices[i] = col;
     opacities[i] = 0;
 
-    const shouldBeVisible = Math.random() > 0.3; // 70% of points will be visible
+    const shouldBeVisible = Math.random() > 0.2; // 70% of points will be visible
     opacities[i] = shouldBeVisible ? 0 : -1; // Use -1 to mark permanently hidden points
   }
 
@@ -122,6 +145,7 @@ function createGridPoints(width, height, segments) {
     "pointOpacity",
     new THREE.BufferAttribute(opacities, 1)
   );
+  geometry.setAttribute("initialY", new THREE.BufferAttribute(initialY, 1));
   return geometry;
 }
 
@@ -166,6 +190,7 @@ btn.on("click", () => {
 function animate() {
   if (!params.isPlaying) return;
   params.time += 1;
+  pointMaterial.uniforms.time.value = params.time;
   // Scale these values based on animation time
   const baseSpeed = 0.000005 * (1000 / params.animationTime);
   const acceleration = 0.000004 * (1000 / params.animationTime);
@@ -206,10 +231,10 @@ function animate() {
       );
 
       positions[positionIndex] +=
-        baseSpeed + speed + velocities[positionIndex] * velocityScale;
+        speed + velocities[positionIndex] * velocityScale;
 
       // Add wave motion only after traveling a certain distance
-      const waveStartDistance = 0.1; // Adjust this value to control when the wave starts
+      const waveStartDistance = 1.5; // Adjust this value to control when the wave starts
       const waveStrength = Math.min(
         Math.max(0, (distanceTravelled - waveStartDistance) / 0.1),
         1.0
