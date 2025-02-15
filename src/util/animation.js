@@ -1,32 +1,42 @@
-export default function (time, animationTime, points) {
-  // Scale these values based on animation time
-  const baseSpeed = 0.000005 * (1000 / animationTime);
-  const acceleration = 0.000004 * (1000 / animationTime);
-  const maxSpeed = 0.005 * (1000 / animationTime);
+export default function (time, animationTime, attributes) {
+  const timeScale = 1000 / animationTime;
 
-  // Wave motion scaling
-  const waveSpeed = 0.001 * (1000 / animationTime);
-  const waveAmplitude = 0.001 * (1000 / animationTime);
-  const velocityScale = 0.01 * (1000 / animationTime);
-  const verticalVelocityScale = 0.04 * (1000 / animationTime);
-  const positions = points.geometry.attributes.position.array;
-  const velocities = points.geometry.attributes.velocities.array;
-  const initialPositions = points.geometry.attributes.initialPositions.array;
-  const opacities = points.geometry.attributes.pointOpacity.array;
-  const bounds = points.geometry.attributes.bounds.array;
-  const minX = bounds[0];
-  const xRange = bounds[2];
+  const motion = {
+    base: {
+      speed: 0.000005 * timeScale,
+      acceleration: 0.000004 * timeScale,
+      maxSpeed: 0.005 * timeScale,
+    },
+    wave: {
+      speed: 0.001 * timeScale,
+      amplitude: 0.001 * timeScale,
+      startDistance: 1.5,
+    },
+    velocity: {
+      horizontal: 0.01 * timeScale,
+      vertical: 0.04 * timeScale,
+    },
+  };
 
+  const {
+    position: { array: positions },
+    velocities: { array: velocities },
+    initialPositions: { array: initialPositions },
+    pointOpacity: { array: opacities },
+    bounds: { array: bounds },
+  } = attributes;
+
+  const [minX, , xRange] = bounds;
   const effectProgress = time / animationTime;
-  const particleDelay = 0.01 * (1000 / animationTime);
+  const particleDelay = 0.01 * timeScale;
 
   for (let i = 0; i < opacities.length; i++) {
     if (opacities[i] === -1) continue;
+
     const positionIndex = i * 3;
     const distanceTravelled = Math.abs(
       positions[positionIndex] - initialPositions[positionIndex]
     );
-
     const xProgress = (initialPositions[positionIndex] - minX) / xRange;
 
     if (xProgress < effectProgress - particleDelay) {
@@ -35,28 +45,26 @@ export default function (time, animationTime, points) {
 
     if (opacities[i] > 0.2) {
       const speed = Math.min(
-        Math.sqrt(2 * acceleration * distanceTravelled),
-        maxSpeed
+        Math.sqrt(2 * motion.base.acceleration * distanceTravelled),
+        motion.base.maxSpeed
       );
 
       positions[positionIndex] +=
-        speed + velocities[positionIndex] * velocityScale;
+        speed + velocities[positionIndex] * motion.velocity.horizontal;
 
-      // Add wave motion only after traveling a certain distance
-      const waveStartDistance = 1.5; // Adjust this value to control when the wave starts
       const waveStrength = Math.min(
-        Math.max(0, (distanceTravelled - waveStartDistance) / 0.1),
+        Math.max(0, (distanceTravelled - motion.wave.startDistance) / 0.1),
         1.0
       );
 
       positions[positionIndex + 1] +=
-        velocities[positionIndex + 1] * verticalVelocityScale +
-        Math.sin(positions[positionIndex] * 2 + time * waveSpeed) *
-          waveAmplitude *
+        velocities[positionIndex + 1] * motion.velocity.vertical +
+        Math.sin(positions[positionIndex] * 2 + time * motion.wave.speed) *
+          motion.wave.amplitude *
           waveStrength;
     }
   }
 
-  points.geometry.attributes.position.needsUpdate = true;
-  points.geometry.attributes.pointOpacity.needsUpdate = true;
+  attributes.position.needsUpdate = true;
+  attributes.pointOpacity.needsUpdate = true;
 }
