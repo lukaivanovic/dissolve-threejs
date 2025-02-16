@@ -1,6 +1,8 @@
 import { getPointsFromShape, getShapesFromSVG } from "./util/utils";
 import * as THREE from "three";
 import pointAnimation from "./util/animation";
+import ParticleMaterial from "./materials/ParticleMaterial";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
@@ -20,32 +22,35 @@ let pointCloud;
 
 getShapesFromSVG()
   .then((group) => {
-    const points = getPointsFromShape(group);
+    const geometry = getPointsFromShape(group);
 
-    // Create geometry from points array
-    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    pointCloud = new THREE.Points(geometry, ParticleMaterial);
 
-    // Calculate bounding box of the geometry
-    geometry.computeBoundingBox();
-    const box = geometry.boundingBox;
+    const geometries = [];
 
-    // Calculate the optimal camera position
-    const size = box.getSize(new THREE.Vector3());
-    const maxDim = Math.max(size.x, size.y);
-    camera.position.z = maxDim * 2; // Adjust this multiplier as needed
-    camera.position.x = (box.max.x - box.min.x) / 2;
-    camera.position.y = (box.min.y - box.max.y) / 2;
-
-    // Create white point material
-    const material = new THREE.PointsMaterial({
-      color: 0xffffff, // white color
-      size: 0.001, // small point size
-      sizeAttenuation: true, // size will change based on distance from camera
+    group.traverse((child) => {
+      if (child.isMesh) {
+        geometries.push(child.geometry);
+      }
     });
 
-    // Create points object and add to scene
-    pointCloud = new THREE.Points(geometry, material);
+    const mergedGeometry = mergeGeometries(geometries);
+    const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const mergedMesh = new THREE.Mesh(mergedGeometry, material);
+
+    scene.add(mergedMesh);
+
     scene.add(pointCloud);
+
+    /*
+    pointCloud = geometry.computeBoundingBox();
+    const box = geometry.boundingBox;
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y);
+    camera.position.z = maxDim * 2;
+    camera.position.x = (box.max.x - box.min.x) / 2;
+    camera.position.y = (box.min.y - box.max.y) / 2;
+    */
   })
   .catch((error) => {
     console.error("Error loading SVG:", error);
@@ -65,6 +70,7 @@ function animate() {
     );
     params.time++;
   }
+
   renderer.render(scene, camera);
 }
 

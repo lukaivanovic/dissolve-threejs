@@ -4,17 +4,11 @@ import { SVGLoader } from "three/addons/loaders/SVGLoader.js";
 export function getPointsFromShape(group) {
   const points = [];
   const density = 0.2;
-  // console.log(group);
-
   let bb = new THREE.Box3().setFromObject(group);
-  let size = bb.getSize(new THREE.Vector3());
-
-  // console.log(bb);
 
   group.traverse((child) => {
     if (child.type === "Mesh") {
       child.geometry.computeBoundingBox();
-      const bbox = child.geometry.boundingBox;
       const shape = child.geometry.parameters.shapes;
 
       for (let x = bb.min.x; x <= bb.max.x; x += density) {
@@ -28,10 +22,8 @@ export function getPointsFromShape(group) {
   });
 
   const geometry = new THREE.BufferGeometry().setFromPoints(points);
-  console.log(createPointGeometry(geometry));
 
-  // console.log(points);
-  return points;
+  return createPointGeometry(geometry);
 }
 
 function isPointInShape(point, shape) {
@@ -39,7 +31,6 @@ function isPointInShape(point, shape) {
   let inside = false;
 
   const shapePts = shape.getPoints();
-  // console.log(shapePts);
 
   for (let i = 0, j = shapePts.length - 1; i < shapePts.length; j = i++) {
     const xi = shapePts[i].x,
@@ -85,13 +76,11 @@ function createPointGeometry(geometry) {
   for (let i = 0; i < totalPoints; i++) {
     const index = i * 3;
 
-    // Get vertex position
     const x = positions[index];
     const y = positions[index + 1];
     const z = positions[index + 2];
 
-    // Add some randomization for more natural look
-    const jitter = 0.02; // Adjust this value to control spread
+    const jitter = 0.02;
     pointPositions[index] = x + (Math.random() - 0.5) * jitter;
     pointPositions[index + 1] = y + (Math.random() - 0.5) * jitter;
     pointPositions[index + 2] = 1;
@@ -100,19 +89,19 @@ function createPointGeometry(geometry) {
     initialPositions[index + 1] = pointPositions[index + 1];
     initialPositions[index + 2] = 1;
 
-    velocities[index] = Math.random() * 0.01; // x velocity
-    velocities[index + 1] = (Math.random() - 0.5) * 0.01; // y velocity - upward drift
-    velocities[index + 2] = (Math.random() - 0.5) * 0.01; // z velocity for depth
+    velocities[index] = Math.random() * 0.01;
+    velocities[index + 1] = (Math.random() - 0.5) * 0.01;
+    velocities[index + 2] = (Math.random() - 0.5) * 0.01;
 
     initialY[i] = positions[i + 1];
 
-    velocities[i] = Math.random() * 0.01; // x velocity
-    velocities[i + 1] = (Math.random() - 0.5) * 0.02; // y velocity - upward drift
-    velocities[i + 2] = (Math.random() - 0.5) * 0.01; // z velocity for depth
+    velocities[i] = Math.random() * 0.01;
+    velocities[i + 1] = (Math.random() - 0.5) * 0.02;
+    velocities[i + 2] = (Math.random() - 0.5) * 0.01;
 
     opacities[i] = 0;
-    const shouldBeVisible = Math.random() > 0.4; // 70% of points will be visible
-    opacities[i] = shouldBeVisible ? 0 : -1; // Use -1 to mark permanently hidden points
+    const shouldBeVisible = Math.random() > 0.4;
+    opacities[i] = shouldBeVisible ? 0 : -1;
   }
 
   const pointGeometry = new THREE.BufferGeometry();
@@ -176,8 +165,6 @@ export function getShapesFromSVG() {
 
         const box = new THREE.Box3().setFromObject(group);
         const center = box.getCenter(new THREE.Vector3());
-        // group.position.sub(center);
-        console.log(group);
 
         resolve(group);
       },
