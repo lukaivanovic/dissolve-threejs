@@ -1,8 +1,7 @@
-import { getPointsFromShape, getShapesFromSVG } from "./util/utils";
+import { getPointsFromGroup, getGeometryFromSVG } from "./util/utils";
 import * as THREE from "three";
 import pointAnimation from "./util/animation";
 import ParticleMaterial from "./materials/ParticleMaterial";
-import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
@@ -20,9 +19,33 @@ camera.position.z = 20;
 
 let pointCloud;
 
-getShapesFromSVG()
-  .then((group) => {
+getGeometryFromSVG()
+  .then(({ group, mergedGeometry }) => {
+    const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const mergedMesh = new THREE.Mesh(mergedGeometry, material);
+
+    const pointGeometry = getPointsFromGroup(group);
+    pointCloud = new THREE.Points(pointGeometry, ParticleMaterial);
+    console.log(mergedGeometry);
+    scene.add(pointCloud);
+
+    scene.add(mergedMesh);
+
+    /*
     const geometry = getPointsFromShape(group);
+
+    const geometries = [];
+
+        group.traverse((child) => {
+          if (child.isMesh) {
+            geometries.push(child.geometry);
+          }
+        });
+
+        const mergedGeometry = mergeGeometries(geometries);
+
+        console.log(mergedGeometry);
+    
 
     pointCloud = new THREE.Points(geometry, ParticleMaterial);
 
@@ -42,7 +65,7 @@ getShapesFromSVG()
 
     scene.add(pointCloud);
 
-    /*
+    
     pointCloud = geometry.computeBoundingBox();
     const box = geometry.boundingBox;
     const size = box.getSize(new THREE.Vector3());

@@ -1,7 +1,8 @@
 import * as THREE from "three";
 import { SVGLoader } from "three/addons/loaders/SVGLoader.js";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
-export function getPointsFromShape(group) {
+export function getPointsFromGroup(group) {
   const points = [];
   const density = 0.2;
   let bb = new THREE.Box3().setFromObject(group);
@@ -134,7 +135,7 @@ function createPointGeometry(geometry) {
   return pointGeometry;
 }
 
-export function getShapesFromSVG() {
+export function getGeometryFromSVG() {
   return new Promise((resolve, reject) => {
     const loader = new SVGLoader();
 
@@ -163,10 +164,9 @@ export function getShapesFromSVG() {
           });
         }
 
-        const box = new THREE.Box3().setFromObject(group);
-        const center = box.getCenter(new THREE.Vector3());
+        const mergedGeometry = mergeGroup(group);
 
-        resolve(group);
+        resolve({ group, mergedGeometry });
       },
       function (xhr) {
         console.log("loading");
@@ -176,4 +176,16 @@ export function getShapesFromSVG() {
       }
     );
   });
+}
+
+function mergeGroup(group) {
+  const geometries = [];
+
+  group.traverse((child) => {
+    if (child.isMesh) {
+      geometries.push(child.geometry);
+    }
+  });
+
+  return mergeGeometries(geometries);
 }
