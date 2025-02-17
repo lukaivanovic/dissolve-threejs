@@ -1,4 +1,8 @@
-import { getPointsFromGroup, getGeometryFromSVG } from "./util/utils";
+import {
+  getPointsFromGroup,
+  getGeometryFromSVG,
+  createBoundingBoxHelper,
+} from "./util/utils";
 import * as THREE from "three";
 import pointAnimation from "./util/animation";
 import ParticleMaterial from "./materials/ParticleMaterial";
@@ -21,51 +25,35 @@ let pointCloud;
 
 getGeometryFromSVG()
   .then(({ group, mergedGeometry }) => {
-    const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    const mergedMesh = new THREE.Mesh(mergedGeometry, material);
+    const pointMaterial = new THREE.PointsMaterial({
+      color: 0x888888,
+      size: 0.001,
+    });
 
     const pointGeometry = getPointsFromGroup(group);
-    pointCloud = new THREE.Points(pointGeometry, ParticleMaterial);
-    console.log(mergedGeometry);
+    pointCloud = new THREE.Points(pointGeometry, pointMaterial);
+
+    const groupBBoxHelper = createBoundingBoxHelper(group, 0xffff00); // yellow for group
+    const pointCloudBBoxHelper = createBoundingBoxHelper(pointCloud, 0xff0000); // red for point cloud
+
+    scene.add(groupBBoxHelper);
+    scene.add(pointCloudBBoxHelper);
+
     scene.add(pointCloud);
-
-    scene.add(mergedMesh);
-
-    /*
-    const geometry = getPointsFromShape(group);
-
-    const geometries = [];
-
-        group.traverse((child) => {
-          if (child.isMesh) {
-            geometries.push(child.geometry);
-          }
-        });
-
-        const mergedGeometry = mergeGeometries(geometries);
-
-        console.log(mergedGeometry);
-    
-
-    pointCloud = new THREE.Points(geometry, ParticleMaterial);
-
-    const geometries = [];
 
     group.traverse((child) => {
       if (child.isMesh) {
-        geometries.push(child.geometry);
+        child.material = new THREE.MeshBasicMaterial({
+          color: 0xffff00,
+          opacity: 0.3,
+          transparent: true,
+        });
       }
     });
 
-    const mergedGeometry = mergeGeometries(geometries);
-    const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    const mergedMesh = new THREE.Mesh(mergedGeometry, material);
+    scene.add(group);
 
-    scene.add(mergedMesh);
-
-    scene.add(pointCloud);
-
-    
+    /*
     pointCloud = geometry.computeBoundingBox();
     const box = geometry.boundingBox;
     const size = box.getSize(new THREE.Vector3());
@@ -85,6 +73,7 @@ const params = {
 };
 
 function animate() {
+  /*
   if (pointCloud) {
     pointAnimation(
       params.time,
@@ -93,6 +82,7 @@ function animate() {
     );
     params.time++;
   }
+  */
 
   renderer.render(scene, camera);
 }
