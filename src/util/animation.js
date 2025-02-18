@@ -1,20 +1,26 @@
-export default function (time, animationTime, attributes) {
-  const timeScale = 1000 / animationTime;
+export default function (
+  effectProgress,
+  width,
+  time,
+  animationTime,
+  attributes
+) {
+  const timeScale = (1000 / animationTime) * (10 / width);
 
   const motion = {
     base: {
-      speed: 0.000005 * timeScale,
-      acceleration: 0.000004 * timeScale,
-      maxSpeed: 0.005 * timeScale,
+      speed: 0.00003 * timeScale,
+      acceleration: 0.00005 * timeScale,
+      maxSpeed: 0.4 * timeScale,
     },
     wave: {
-      speed: 0.001 * timeScale,
-      amplitude: 0.001 * timeScale,
+      speed: 0.00001 * timeScale,
+      amplitude: 0.006 * timeScale,
       startDistance: 1.5,
     },
     velocity: {
-      horizontal: 0.01 * timeScale,
-      vertical: 0.04 * timeScale,
+      horizontal: 0.3 * timeScale,
+      vertical: 0.1 * timeScale,
     },
   };
 
@@ -27,8 +33,9 @@ export default function (time, animationTime, attributes) {
   } = attributes;
 
   const [minX, , xRange] = bounds;
-  const effectProgress = time / animationTime;
+
   const particleDelay = 0.01 * timeScale;
+  const fadeOutStart = 2.5; // Start fading at 2x animation time
 
   for (let i = 0; i < opacities.length; i++) {
     if (opacities[i] === -1) continue;
@@ -41,6 +48,11 @@ export default function (time, animationTime, attributes) {
 
     if (xProgress < effectProgress - particleDelay) {
       opacities[i] = Math.min(opacities[i] + 0.015, 1.0);
+
+      // Fade out after 2x animation time
+      if (time > animationTime * fadeOutStart) {
+        opacities[i] = opacities[i] - 0.02;
+      }
     }
 
     if (opacities[i] > 0.2) {
@@ -57,9 +69,14 @@ export default function (time, animationTime, attributes) {
         1.0
       );
 
+      const phaseOffset = i * 0.5; // You can adjust this multiplier to control the variation
       positions[positionIndex + 1] +=
         velocities[positionIndex + 1] * motion.velocity.vertical +
-        Math.sin(positions[positionIndex] * 2 + time * motion.wave.speed) *
+        Math.sin(
+          positions[positionIndex] * 0.5 +
+            time * motion.wave.speed +
+            phaseOffset
+        ) *
           motion.wave.amplitude *
           waveStrength;
     }

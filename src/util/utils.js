@@ -4,7 +4,7 @@ import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 export function getPointsFromGroup(group) {
   const points = [];
-  const density = 0.1;
+  const density = 0.25;
   // let bb = new THREE.Box3().setFromObject(group);
 
   group.traverse((child) => {
@@ -60,7 +60,6 @@ function createPointGeometry(geometry) {
   const initialY = new Float32Array(totalPoints);
   const pointPositions = new Float32Array(totalPoints * 3);
 
-  // Calculate bounds first
   let minX = Infinity;
   let maxX = -Infinity;
   for (let i = 0; i < positions.length; i += 3) {
@@ -69,8 +68,7 @@ function createPointGeometry(geometry) {
   }
   const xRange = Math.abs(maxX - minX);
 
-  // Store these as attributes
-  const bounds = new Float32Array(3); // [minX, maxX, xRange]
+  const bounds = new Float32Array(3);
   bounds[0] = minX;
   bounds[1] = maxX;
   bounds[2] = xRange;
@@ -83,13 +81,13 @@ function createPointGeometry(geometry) {
     const z = positions[index + 2];
 
     const jitter = 0.02;
-    pointPositions[index] = x; // + (Math.random() - 0.5) * jitter;
-    pointPositions[index + 1] = y; // + (Math.random() - 0.5) * jitter;
-    pointPositions[index + 2] = 1;
+    pointPositions[index] = x + (Math.random() - 0.5) * jitter;
+    pointPositions[index + 1] = y + (Math.random() - 0.5) * jitter;
+    pointPositions[index + 2] = z;
 
     initialPositions[index] = pointPositions[index];
     initialPositions[index + 1] = pointPositions[index + 1];
-    initialPositions[index + 2] = 1;
+    initialPositions[index + 2] = pointPositions[index + 2];
 
     velocities[index] = Math.random() * 0.01;
     velocities[index + 1] = (Math.random() - 0.5) * 0.01;
@@ -101,9 +99,9 @@ function createPointGeometry(geometry) {
     velocities[i + 1] = (Math.random() - 0.5) * 0.02;
     velocities[i + 2] = (Math.random() - 0.5) * 0.01;
 
-    opacities[i] = 1;
-    // const shouldBeVisible = Math.random() > 0.4;
-    // opacities[i] = shouldBeVisible ? 0 : -1;
+    opacities[i] = 0;
+    const shouldBeVisible = Math.random() > 0.7;
+    opacities[i] = shouldBeVisible ? 0 : -1;
   }
 
   const pointGeometry = new THREE.BufferGeometry();
@@ -111,7 +109,6 @@ function createPointGeometry(geometry) {
     "position",
     new THREE.BufferAttribute(pointPositions, 3)
   );
-  /*
   pointGeometry.setAttribute(
     "velocities",
     new THREE.BufferAttribute(velocities, 3)
@@ -134,7 +131,6 @@ function createPointGeometry(geometry) {
   );
   pointGeometry.setAttribute("bounds", new THREE.BufferAttribute(bounds, 1));
 
-  */
   return pointGeometry;
 }
 

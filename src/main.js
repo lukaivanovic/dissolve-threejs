@@ -1,11 +1,12 @@
+import * as THREE from "three";
 import {
   getPointsFromGroup,
   getGeometryFromSVG,
   createBoundingBoxHelper,
 } from "./util/utils";
-import * as THREE from "three";
 import pointAnimation from "./util/animation";
 import ParticleMaterial from "./materials/ParticleMaterial";
+import DissolveMaterial from "./materials/DissolveMaterial";
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
@@ -15,53 +16,42 @@ const camera = new THREE.PerspectiveCamera(
   1000
 );
 
-const renderer = new THREE.WebGLRenderer();
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-camera.position.z = 20;
+camera.position.z = 50;
 
 let pointCloud;
+let dissolveMaterial = DissolveMaterial;
+let width = 0;
 
 getGeometryFromSVG()
   .then(({ group, mergedGeometry }) => {
-    const pointMaterial = new THREE.PointsMaterial({
-      color: 0x888888,
-      size: 0.001,
-    });
-
     const pointGeometry = getPointsFromGroup(group);
-    pointCloud = new THREE.Points(pointGeometry, pointMaterial);
+    pointCloud = new THREE.Points(pointGeometry, ParticleMaterial);
 
-    const groupBBoxHelper = createBoundingBoxHelper(group, 0xffff00); // yellow for group
-    const pointCloudBBoxHelper = createBoundingBoxHelper(pointCloud, 0xff0000); // red for point cloud
+    mergedGeometry.computeBoundingBox();
+    const bbox = mergedGeometry.boundingBox;
+    console.log(bbox);
+    width = bbox.max.x - bbox.min.x;
+    dissolveMaterial.uniforms.min.value = bbox.min.x;
+    dissolveMaterial.uniforms.max.value = bbox.max.x;
+    const SVGShape = new THREE.Mesh(mergedGeometry, dissolveMaterial);
 
-    scene.add(groupBBoxHelper);
-    scene.add(pointCloudBBoxHelper);
+    const centerOffsetX = -(bbox.max.x + bbox.min.x) / 2;
+    const centerOffsetY = -(bbox.max.y + bbox.min.y) / 2;
+
+    // Apply the offset to both objects and add rotation (e.g., 15 degrees)
+    const rotationAngle = THREE.MathUtils.degToRad(7); // Convert 15 degrees to radians
+    pointCloud.position.set(centerOffsetX, centerOffsetY, 0);
+    pointCloud.rotation.z = rotationAngle;
+
+    SVGShape.position.set(centerOffsetX, centerOffsetY, 0);
+    SVGShape.rotation.z = rotationAngle;
 
     scene.add(pointCloud);
-
-    group.traverse((child) => {
-      if (child.isMesh) {
-        child.material = new THREE.MeshBasicMaterial({
-          color: 0xffff00,
-          opacity: 0.3,
-          transparent: true,
-        });
-      }
-    });
-
-    scene.add(group);
-
-    /*
-    pointCloud = geometry.computeBoundingBox();
-    const box = geometry.boundingBox;
-    const size = box.getSize(new THREE.Vector3());
-    const maxDim = Math.max(size.x, size.y);
-    camera.position.z = maxDim * 2;
-    camera.position.x = (box.max.x - box.min.x) / 2;
-    camera.position.y = (box.min.y - box.max.y) / 2;
-    */
+    scene.add(SVGShape);
   })
   .catch((error) => {
     console.error("Error loading SVG:", error);
@@ -69,20 +59,30 @@ getGeometryFromSVG()
 
 const params = {
   time: 0,
-  animationTime: 400,
+  animationTime: 540,
+  delayFrames: 800, // Add delay of 120 frames (about 2 seconds at 60fps)
 };
 
 function animate() {
-  /*
   if (pointCloud) {
-    pointAnimation(
-      params.time,
-      params.animationTime,
-      pointCloud.geometry.attributes
-    );
+    if (params.time >= params.delayFrames) {
+      // Only start animation after delay
+      const linearProgress =
+        (params.time - params.delayFrames) / params.animationTime;
+      // Add ease-in using cubic function (t³)
+      const effectProgress = linearProgress * linearProgress;
+
+      pointAnimation(
+        effectProgress,
+        width,
+        params.time - params.delayFrames,
+        params.animationTime,
+        pointCloud.geometry.attributes
+      );
+      dissolveMaterial.uniforms.threshold.value = effectProgress;
+    }
     params.time++;
   }
-  */
 
   renderer.render(scene, camera);
 }
