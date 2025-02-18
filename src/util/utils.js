@@ -139,7 +139,7 @@ export function getGeometryFromSVG() {
     const loader = new SVGLoader();
 
     loader.load(
-      "src/assets/test.svg",
+      "test.svg",
       function (data) {
         const paths = data.paths;
         const group = new THREE.Group();
