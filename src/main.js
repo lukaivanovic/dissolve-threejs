@@ -20,7 +20,7 @@ const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-camera.position.z = 35;
+camera.position.z = 28;
 
 let pointCloud;
 let dissolveMaterial = DissolveMaterial;

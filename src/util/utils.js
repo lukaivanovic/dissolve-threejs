@@ -4,7 +4,7 @@ import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 export function getPointsFromGroup(group) {
   const points = [];
-  const density = 0.35;
+  const density = 0.2;
 
   group.traverse((child) => {
     if (child.type === "Mesh") {
