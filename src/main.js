@@ -20,7 +20,7 @@ const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-camera.position.z = 50;
+camera.position.z = 35;
 
 let pointCloud;
 let dissolveMaterial = DissolveMaterial;
@@ -39,16 +39,14 @@ getGeometryFromSVG()
     dissolveMaterial.uniforms.max.value = bbox.max.x;
     const SVGShape = new THREE.Mesh(mergedGeometry, dissolveMaterial);
 
-    const centerOffsetX = -(bbox.max.x + bbox.min.x) / 2;
-    const centerOffsetY = -(bbox.max.y + bbox.min.y) / 2;
+    const centerOffsetX = (bbox.max.x - bbox.min.x) / 2;
+    const centerOffsetY = (bbox.max.y - bbox.min.y) / 2;
 
-    // Apply the offset to both objects and add rotation (e.g., 15 degrees)
-    const rotationAngle = THREE.MathUtils.degToRad(7); // Convert 15 degrees to radians
-    pointCloud.position.set(centerOffsetX, centerOffsetY, 0);
-    pointCloud.rotation.z = rotationAngle;
+    pointCloud.scale.y = -1;
+    pointCloud.position.set(-1 * centerOffsetX, centerOffsetY, 0);
 
-    SVGShape.position.set(centerOffsetX, centerOffsetY, 0);
-    SVGShape.rotation.z = rotationAngle;
+    SVGShape.position.set(-1 * centerOffsetX, centerOffsetY, 0);
+    SVGShape.scale.y = -1;
 
     scene.add(pointCloud);
     scene.add(SVGShape);
@@ -60,16 +58,15 @@ getGeometryFromSVG()
 const params = {
   time: 0,
   animationTime: 540,
-  delayFrames: 800, // Add delay of 120 frames (about 2 seconds at 60fps)
+  delayFrames: 800,
 };
 
 function animate() {
   if (pointCloud) {
     if (params.time >= params.delayFrames) {
-      // Only start animation after delay
       const linearProgress =
         (params.time - params.delayFrames) / params.animationTime;
-      // Add ease-in using cubic function (t³)
+
       const effectProgress = linearProgress * linearProgress;
 
       pointAnimation(
@@ -88,3 +85,9 @@ function animate() {
 }
 
 renderer.setAnimationLoop(animate);
+
+window.addEventListener("resize", () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});

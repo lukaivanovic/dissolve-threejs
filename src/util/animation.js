@@ -20,7 +20,7 @@ export default function (
     },
     velocity: {
       horizontal: 0.3 * timeScale,
-      vertical: 0.1 * timeScale,
+      vertical: 0.15 * timeScale,
     },
   };
 
@@ -47,7 +47,7 @@ export default function (
     const xProgress = (initialPositions[positionIndex] - minX) / xRange;
 
     if (xProgress < effectProgress - particleDelay) {
-      opacities[i] = Math.min(opacities[i] + 0.015, 1.0);
+      opacities[i] = Math.min(opacities[i] + 0.015, 0.8);
 
       // Fade out after 2x animation time
       if (time > animationTime * fadeOutStart) {

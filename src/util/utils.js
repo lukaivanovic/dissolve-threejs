@@ -4,8 +4,7 @@ import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 export function getPointsFromGroup(group) {
   const points = [];
-  const density = 0.25;
-  // let bb = new THREE.Box3().setFromObject(group);
+  const density = 0.35;
 
   group.traverse((child) => {
     if (child.type === "Mesh") {
@@ -90,17 +89,13 @@ function createPointGeometry(geometry) {
     initialPositions[index + 2] = pointPositions[index + 2];
 
     velocities[index] = Math.random() * 0.01;
-    velocities[index + 1] = (Math.random() - 0.5) * 0.01;
+    velocities[index + 1] = (Math.random() - 0.5) * 0.03;
     velocities[index + 2] = (Math.random() - 0.5) * 0.01;
 
     initialY[i] = positions[i + 1];
 
-    velocities[i] = Math.random() * 0.01;
-    velocities[i + 1] = (Math.random() - 0.5) * 0.02;
-    velocities[i + 2] = (Math.random() - 0.5) * 0.01;
-
     opacities[i] = 0;
-    const shouldBeVisible = Math.random() > 0.7;
+    const shouldBeVisible = Math.random() > 0.8;
     opacities[i] = shouldBeVisible ? 0 : -1;
   }
 
